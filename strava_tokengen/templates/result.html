@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+  <p>Access token received from Strava.</p>
+
+  <p>Your access token is:</p>
+  <pre>{{ token }}</pre>
+
+  <p>
+    Give it to applications when prompted. Be aware that doing so will give that
+    application read/write access to your data on Strava.
+  </p>
+{% endblock %}

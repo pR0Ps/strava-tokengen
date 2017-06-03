@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+  <p>
+    This webapp will generate a
+    <a href="http://strava.github.io/api/v3/oauth">Strava API</a>
+    OAuth token for use in some Strava tools.
+  </p>
+
+  <h3>Security and privacy</h3>
+  <p>
+    This webapp <em>will not</em> store the generated access token or use it in
+    any way. If you aren't willing to trust this webapp, you can run your own
+    instance of it. Setup instructions are on the
+    <a href="https://github.com/pR0Ps/strava-tokengen">project page</a>.
+  </p>
+
+  <a href="{{ auth_url }}">
+    <button>Request access token from Strava</button>
+  </a>
+{% endblock %}
