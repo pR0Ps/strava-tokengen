@@ -5,43 +5,37 @@ from configparser import ConfigParser
 import contextlib
 import os
 import textwrap
+from urllib.parse import urlparse
 
 import cherrypy
 from jinja2 import Environment, PackageLoader
+import pkg_resources
 from stravalib import Client
 
 
-CONFIG_DIR = os.path.join(os.environ['HOME'], '.config')
+CONFIG_DIR = os.environ.get('XDG_CONFIG_HOME', os.path.join(os.environ['HOME'], '.config'))
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'strava-tokengen.conf')
 
 
 class StravaTokenGen(object):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *, client_id, client_secret, redirect_uri, scope):
         """Create the webapp and load the template environment"""
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.redirect_uri = redirect_uri
+        self.scope = scope
         self.env = Environment(
-            loader=PackageLoader('strava_tokengen', 'templates'),
+            loader=PackageLoader(__name__, 'templates'),
             autoescape=False
         )
-
-    @property
-    def client_id(self):
-        return cherrypy.request.app.config['strava']['client_id']
-
-    @property
-    def client_secret(self):
-        return cherrypy.request.app.config['strava']['client_secret']
-
-    @property
-    def redirect_uri(self):
-        return cherrypy.request.app.config['strava']['redirect_uri']
 
     @cherrypy.expose
     def index(self):
         """Main page"""
-        auth_url = Client().authorization_url(scope="view_private,write",
+        auth_url = Client().authorization_url(scope=self.scope,
                                               client_id=self.client_id,
                                               redirect_uri=self.redirect_uri)
         return self.env.get_template('index.html').render(auth_url=auth_url)
@@ -66,49 +60,62 @@ class StravaTokenGen(object):
 
 def create_default_config():
     """Create a default config file template"""
-    config = ConfigParser()
-    config['global'] = {
-        'environment': '"production"',
-        'log.screen': True,
-        'server.socket_host': '"localhost"',
-        'server.socket_port': 5000,
-    }
-    config['strava'] = {
-        'client_id': '""',
-        'client_secret': '""',
-        'redirect_uri': '"http://localhost:5000/auth"',
-    }
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_FILE, 'w') as f:
-        config.write(f)
+    conf = pkg_resources.resource_string(__name__, "strava-tokengen.conf")
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(CONFIG_FILE, 'wb') as f:
+            f.write(conf)
+    except OSError:
+        msg = "ERROR: Failed to create the config file template - create it "\
+              "manually with the following contents:"
+        print(textwrap.fill(msg, width=90, subsequent_indent="       "))
+        print("{1}\n{0}\n{1}".format(conf.decode('utf-8'), '-'*60))
+
+
+def validate_config(conf):
+    """Ensure the config is properly filled out (raises ValueError if not)"""
+    if 'scope' not in conf or \
+            any(not conf.get(x)
+                for x in ('client_id', 'client_secret', 'redirect_uri')):
+        raise ValueError("Not all required config parameters are set - check "
+                         "the config file")
 
 
 def run_server():
     """Create a default config file if one doesn't exist and run the server"""
-    config = ConfigParser()
+    conf_parser = ConfigParser()
     try:
         with open(CONFIG_FILE, 'r') as f:
-            config.read_file(f)
+            conf_parser.read_file(f)
     except FileNotFoundError:
-        msg = "WARNING: Creating the default config file at '{}'. You will "\
-              "need to set the 'client_id', 'client_secret', and "\
-              "'redirect_uri' values before this application will work "\
-              "properly".format(CONFIG_FILE)
+        msg = "WARNING: Creating the config file template at '{}'. You will "\
+              "need to modify it before this application will work properly."\
+              "".format(CONFIG_FILE)
         print(textwrap.fill(msg, width=90, subsequent_indent="         "))
 
         create_default_config()
         return
 
-    missing = [x for x in ('client_id', 'client_secret', 'redirect_uri')
-               if not config.get('strava', x, fallback="").strip("\"'")]
-    for x in missing:
-        print("ERROR: Couldn't find the required config value '{}'".format(x))
-    if missing:
-        print()
-        print("Fill in the missing values before running the application")
-        return
+    tg_conf = conf_parser['strava-tokengen']
+    validate_config(tg_conf)
 
-    cherrypy.quickstart(StravaTokenGen(), '/', config=CONFIG_FILE)
+    uri_data = urlparse(tg_conf['redirect_uri'])
+    cherrypy.config.update({
+        'environment': 'production',
+        'log.screen': True,
+        'server.socket_host': uri_data.hostname,
+        'server.socket_port': uri_data.port
+    })
 
-if __name__ == "__main__":
-    run_server()
+    static_dir = pkg_resources.resource_filename(__name__, "static")
+    config = {
+        '/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': static_dir,
+            'tools.gzip.on': True,
+        }
+    }
+
+    cherrypy.tree.mount(StravaTokenGen(**tg_conf), '/', config=config)
+    cherrypy.engine.start()
+    cherrypy.engine.block()

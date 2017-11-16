@@ -1,0 +1,21 @@
+body {
+  text-align: center;
+  color: #000000;
+  background-color: #F5F5F5;
+  font-family: 'arial', 'sans-serif';
+  min-width: 300px;
+}
+main {
+  max-width: 500px;
+  margin: 100px auto 0px auto;
+}
+a#title {
+  color: #000000;
+  text-decoration: none;
+}
+img#gh-banner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: 0;
+}
