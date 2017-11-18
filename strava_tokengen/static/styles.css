@@ -3,11 +3,14 @@ body {
   color: #000000;
   background-color: #F5F5F5;
   font-family: 'arial', 'sans-serif';
-  min-width: 300px;
+  min-width: 350px;
 }
 main {
-  max-width: 500px;
+  max-width: 600px;
   margin: 100px auto 0px auto;
+}
+footer {
+  margin: 50px auto 25px auto;
 }
 a#title {
   color: #000000;
@@ -18,4 +21,22 @@ img#gh-banner {
   top: 0;
   right: 0;
   border: 0;
+}
+table {
+  text-align: left;
+  width: 350px;
+  margin: 0px auto;
+}
+td:last-child {
+  width: 200px;
+}
+input#client_id {
+  width: 50px
+}
+input#client_secret {
+  width: 200px
+}
+input, select {
+  padding: 2px 1px;
+  margin: 1px 0px;
 }
