@@ -1,15 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
-  <p>Access token received from Strava.</p>
+  <p>Successfully authenticated with the Strava API</p>
 
-  <p>Your access token is:</p>
-  <pre>{{ token }}</pre>
+  <p>Your refresh token is:</p>
+  <code>{{ token }}</code>
+  <p>It is valid for the following scope(s):</p>
+  <code>{{ scopes }}</code>
 
   <p>
     Give it to applications when prompted. Be aware that doing so will give that
-    application access to your data on Strava.
+    application access to the above scopes of your Strava account.
   </p>
+
   <p>
-    Specifically, the application will be able to {{ scope }}.
+    Note that this is a refresh token, not an access token. In order to access
+    the Strava API, the refresh token needs to be used to generate a
+    short-lived access token. See
+    <a href="https://developers.strava.com/docs/authentication/#refresh-expired-access-tokens">the Strava API authentication docs</a>
+    for more information.
   </p>
 {% endblock %}

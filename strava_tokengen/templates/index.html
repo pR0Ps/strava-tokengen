@@ -3,14 +3,14 @@
     <p>
       This webapp will generate a
       <a href="http://strava.github.io/api/v3/oauth">Strava API</a>
-      OAuth token for use in some Strava tools.
+      OAuth refresh token for use in some Strava tools.
     </p>
 
     <h3>Security and privacy</h3>
     <p>
       Your client ID and secret will be temporarily stored on the server while the auth flow
       completes. They are purged on successful token generation or after 1 hour, whichever
-      comes first. The generated access token is not stored or used in any way.
+      comes first. The generated tokens are not stored or used in any way.
     </p>
     <p>
       Full source code and setup instructions for running your own instance are provided on
@@ -25,6 +25,9 @@
       is set to <code>{{ domain }}</code> before submitting the form below or the process
       will not work.
     </p>
+    <p>
+      All API scopes will be requested. Simply deny the uneeded ones during the authorization prompt.
+    </p>
     <form method="post" action="/connect">
       <table><tbody>
         <tr>
@@ -34,17 +37,6 @@
         <tr>
           <td><label for="client_secret">Client Secret: </label></td>
           <td><input id="client_secret" name="client_secret" type="password" placeholder="Client secret"></td>
-        </tr>
-        <tr>
-          <td><label for="scope">Permissions: </label></td>
-          <td>
-            <select id="scope" name="scope">
-              <option value="public">Public</option>
-              <option value="view_private">View private</option>
-              <option value="write">Modify and upload</option>
-              <option value="view_private,write" selected>View private, modify, and upload</option>
-            </select>
-          </td>
         </tr>
       </tbody></table>
       <input type="image" src="/static/btn_strava_connectwith_orange.png" alt="Connect with Strava"/>

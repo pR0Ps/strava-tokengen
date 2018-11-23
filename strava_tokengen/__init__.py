@@ -17,6 +17,9 @@ __all__ = ["ConfigError", "run_server"]
 CONFIG_DIR = os.environ.get('XDG_CONFIG_HOME', os.path.join(os.environ['HOME'], '.config'))
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'strava-tokengen.conf')
 
+ALL_SCOPES = ['read', 'read_all', 'profile:read_all', 'profile:write',
+              'activity:read', 'activity:read_all', 'activity:write']
+
 
 class ConfigError(ValueError):
     pass
@@ -40,31 +43,30 @@ class StravaTokenGen(object):
         return self.env.get_template('index.html').render(domain=self.callback_domain)
 
     @cherrypy.expose
-    def connect(self, scope, client_id, client_secret, **_):
+    def connect(self, client_id, client_secret, **_):
         """Store OAuth values on the session and redirect to the auth url"""
-        cherrypy.session['scope'] = scope
         cherrypy.session['client_id'] = client_id
         cherrypy.session['client_secret'] = client_secret
 
         # Validate inputs
-        if not all((scope, client_id, client_secret)):
+        if not all((client_id, client_secret)):
             raise cherrypy.HTTPRedirect("/")
 
         redirect_uri = "http://{}/auth".format(self.callback_domain)
-        auth_url = Client().authorization_url(scope=scope,
+        auth_url = Client().authorization_url(scope=ALL_SCOPES,
                                               client_id=client_id,
-                                              redirect_uri=redirect_uri)
+                                              redirect_uri=redirect_uri,
+                                              approval_prompt="force")
         raise cherrypy.HTTPRedirect(auth_url)
 
     @cherrypy.expose
-    def auth(self, code=None, error=None, **_):
+    def auth(self, code=None, scope=None, error=None, **_):
         """Handle the auth callback from Strava"""
-        scope = cherrypy.session.get('scope')
         client_id = cherrypy.session.get('client_id')
         client_secret = cherrypy.session.get('client_secret')
 
         # Protect against invalid session
-        if None in (scope, client_id, client_secret):
+        if None in (client_id, client_secret):
             raise cherrypy.HTTPRedirect("/")
 
         # Bad response from Strava
@@ -77,27 +79,17 @@ class StravaTokenGen(object):
                 msg = "{}: {}".format(msg, error)
             return self.env.get_template('error.html').render(msg=msg)
 
-        token = Client().exchange_code_for_token(code=code,
-                                                 client_id=client_id,
-                                                 client_secret=client_secret)
-        # Expire current session
+        tokens = Client().exchange_code_for_token(code=code,
+                                                  client_id=client_id,
+                                                  client_secret=client_secret)
+        refresh_token = tokens['refresh_token']
+        scopes = ", ".join(scope.split(","))
+
+        # Expire current session to stop storing the client id/secret
         cherrypy.lib.sessions.expire()
-        return self.env.get_template('result.html').render(token=token,
-                                                           scope=string_for_scope(scope))
 
-def string_for_scope(scope):
-    """Return an explanation of the token scope"""
-    temp = []
-    if "view_private" in scope:
-        temp.append("view private activities and data within privacy zones")
-    if "write" in scope:
-        if temp:
-            temp.append(", as well as")
-        temp.append("modify activities and upload on your behalf")
-    if temp:
-        return " ".join(temp)
-    return "view public activities (excluding data within privacy zones)"
-
+        return self.env.get_template('result.html').render(token=refresh_token,
+                                                           scopes=scopes)
 
 def create_default_config(sample_conf):
     """Create a default config file template"""
