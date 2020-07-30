@@ -138,7 +138,7 @@ def run_server():
               "".format(CONFIG_FILE)
         print(textwrap.fill(msg, width=90, subsequent_indent="         "))
 
-        create_default_config()
+        create_default_config(sample_conf)
         return
 
     validate_config(config, required)
